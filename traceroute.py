@@ -6,6 +6,7 @@ import sys
 import socket
 import re
 import whois
+import struct
 import argparse
 
 
@@ -24,7 +25,7 @@ def main(args):
     for arg in args.destinations:
         dests.append(arg)
     icmp = socket.getprotobyname('icmp')
-    udp = socket.getprotobyname('udp')
+
     for addr in dests:
         print("Destination: {}".format(addr))
 
@@ -39,10 +40,11 @@ def main(args):
         ttl = 1
         while True:
             recv_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, icmp)
-            send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, udp)
+
+            send_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, icmp)
             send_socket.setsockopt(socket.SOL_IP, socket.IP_TTL, ttl)
-            recv_socket.bind((b"", tracert_port))
-            send_socket.sendto(b"", (dest, tracert_port))
+            recv_socket.bind((b"", tracert_port+ttl))
+            send_socket.sendto(struct.pack("bbHHh", 8, 0, 0, 1, 1), (dest, tracert_port+ttl))
             recv_socket.settimeout(0.2)
             send_socket.settimeout(0.2)
             curr_name = None
@@ -54,8 +56,10 @@ def main(args):
                         curr_name = socket.gethostbyaddr(curr_addr)[0]
                     except socket.error:
                         curr_name = curr_addr
-            except socket.error:
+            except socket.error as e:
                 pass
+                print(e)
+
             finally:
                 send_socket.close()
                 recv_socket.close()
@@ -88,8 +92,7 @@ def main(args):
             else:
                 curr_host = "* * *"
 
-            if curr_addr is not None:
-                print("{}\t{}".format(ttl, curr_host))
+            print("{}\t{}".format(ttl, curr_host))
 
             if curr_addr == dest:
                 break
