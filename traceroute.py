@@ -1,13 +1,13 @@
-### Traceroute By AtNes Ness ###
+    ### Traceroute By AtNes Ness ###
 
 #!/usr/bin/python3
 
-import sys
 import socket
 import re
 import whois
 import struct
 import argparse
+import time
 
 
 def isIP(adr):
@@ -18,13 +18,11 @@ def isIP(adr):
 
 
 def main(args):
-
     tracert_port = 33434
     dests = []
     max_hops = 30
     for arg in args.destinations:
         dests.append(arg)
-    icmp = socket.getprotobyname('icmp')
 
     for addr in dests:
         print("Destination: {}".format(addr))
@@ -39,18 +37,21 @@ def main(args):
                 break
         ttl = 1
         while True:
-            recv_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, icmp)
-
-            send_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, icmp)
+            send_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
             send_socket.setsockopt(socket.SOL_IP, socket.IP_TTL, ttl)
-            recv_socket.bind((b"", tracert_port+ttl))
-            send_socket.sendto(struct.pack("bbHHh", 8, 0, 0, 1, 1), (dest, tracert_port+ttl))
-            recv_socket.settimeout(0.2)
-            send_socket.settimeout(0.2)
+            header = struct.pack("bbHHhd", 8, 0, 21659, 47382, 256, 2.0503048680879128e-308)
+            data = b""
+            for i in range(48):
+                data += struct.pack("b", i+8)
+            send_socket.sendto(header+data, (dest, tracert_port+ttl))
+            send_socket.settimeout(1)
             curr_name = None
             curr_addr = None
             try:
-                curr_addr = recv_socket.recvfrom(512)[1][0]
+
+                recv = send_socket.recvfrom(1024)
+                curr_addr = recv[1][0]
+
                 if not args.dontresolve:
                     try:
                         curr_name = socket.gethostbyaddr(curr_addr)[0]
@@ -62,9 +63,9 @@ def main(args):
 
             finally:
                 send_socket.close()
-                recv_socket.close()
 
             if curr_addr is not None:
+
                 if not args.dontresolve:
                     try:
                         provider = whois.get_whois_dict(curr_addr, "whois.iana.org")
