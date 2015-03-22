@@ -69,7 +69,7 @@ def get_whois_dict(target, source=None):
             reg_res = field_c.match(token)
             if reg_res is not None:
                 field = reg_res.group(1)
-                if field in whois:
+                if field in whois and info[index+1] not in whois[field]:
                     whois[field] += " " + info[index+1]
                 else:
                     whois[field] = info[index+1]
