@@ -59,7 +59,7 @@ def main(args):
                         curr_name = curr_addr
             except socket.error as e:
                 pass
-                print(e)
+
 
             finally:
                 send_socket.close()
